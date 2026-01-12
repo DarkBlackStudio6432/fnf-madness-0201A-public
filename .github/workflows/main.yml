@@ -10,23 +10,24 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # ✅ Passo 1: Fazer checkout do repositório
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Java 8 (mais compatível com Lime/OpenFL)
+      # ✅ Passo 2: Configurar Java 8
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "8"
 
-      # Haxe
+      # ✅ Passo 3: Configurar Haxe
       - name: Setup Haxe
         uses: krdlab/setup-haxe@v1
         with:
           haxe-version: 4.2.5
 
-      # Instalar Android SDK (CORRIGIDO)
+      # ✅ Passo 4: Instalar Android SDK manualmente
       - name: Install Android SDK
         run: |
           sudo apt-get update
@@ -42,62 +43,28 @@ jobs:
           mv cmdline-tools-temp/cmdline-tools/* cmdline-tools/latest
           rm -rf cmdline-tools-temp
 
+          # Export PATH para este passo e para próximos passos
           echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
-          echo "PATH=$HOME/android-sdk/cmdline-tools/latest/bin:$PATH" >> $GITHUB_ENV
-          echo "PATH=$HOME/android-sdk/platform-tools:$PATH" >> $GITHUB_ENV
+          echo "ANDROID_NDK_ROOT=$HOME/android-sdk/ndk/21.4.7075529" >> $GITHUB_ENV
+          echo "PATH=$HOME/android-sdk/cmdline-tools/latest/bin:$HOME/android-sdk/platform-tools:$PATH" >> $GITHUB_ENV
 
-      # Instalar SDK, Build Tools e NDK
+      # ✅ Passo 5: Instalar SDK, Build Tools e NDK
       - name: Install Android Packages
         run: |
+          export ANDROID_HOME=$HOME/android-sdk
+          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
+          export PATH=$ANDROID_HOME/platform-tools:$PATH
+
           yes | sdkmanager --licenses
           sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
           sdkmanager "ndk;21.4.7075529"
 
           echo "ANDROID_NDK_ROOT=$ANDROID_HOME/ndk/21.4.7075529" >> $GITHUB_ENV
 
-      # Instalar bibliotecas Haxe
+      # ✅ Passo 6: Instalar bibliotecas Haxe
       - name: Install Haxe Libraries
         run: |
           echo "y" | haxelib setup ~/haxelib
 
           haxelib install lime 7.9.0 --quiet
-          haxelib install openfl 9.1.0 --quiet
-          haxelib install flixel 4.11.0 --quiet
-          haxelib install flixel-addons 2.10.0 --quiet
-          haxelib install flixel-ui 2.3.3 --quiet
-
-          # HXCPP compatível
-          curl -L https://github.com/HaxeFoundation/hxcpp/releases/download/v4.3.45/hxcpp-4.3.45.zip -o hxcpp.zip
-          haxelib install hxcpp.zip --quiet
-
-          haxelib install tjson 1.4.0 --quiet
-          haxelib install SScript 5.2.0 --quiet
-          haxelib install flxanimate 1.2.0 --quiet
-
-          git clone https://github.com/nebulazorua/linc_luajit.git ~/haxelib/linc_luajit/git
-          haxelib dev linc_luajit ~/haxelib/linc_luajit/git
-
-          git clone https://github.com/HaxeExtension/extension-androidtools.git ~/haxelib/extension-androidtools/git
-          haxelib dev extension-androidtools ~/haxelib/extension-androidtools/git
-
-          git clone https://github.com/polybiusproxy/hxCodec.git ~/haxelib/hxCodec/git
-          haxelib dev hxCodec ~/haxelib/hxCodec/git
-
-      # Configurar Lime
-      - name: Configure Lime Android
-        run: |
-          haxelib run lime config ANDROID_SDK $ANDROID_HOME
-          haxelib run lime config ANDROID_NDK_ROOT $ANDROID_NDK_ROOT
-          haxelib run lime config JAVA_HOME $JAVA_HOME
-          haxelib run lime setup android -y
-
-      # Build APK
-      - name: Build APK
-        run: haxelib run lime build android -release
-
-      # Upload APK
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: MADNESS-Android
-          path: export/release/android/bin/app/build/outputs/apk/release/*.apk
+          haxelib install open
