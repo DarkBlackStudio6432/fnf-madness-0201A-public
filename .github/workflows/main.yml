@@ -15,32 +15,35 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '11' # Versão mais compatível com engines antigas
+          java-version: '11'
 
       - name: Setup Haxe
         uses: krdlab/setup-haxe@v1
         with:
-          haxe-version: 4.2.5 # Versão estável para Psych 0.2.8
+          haxe-version: 4.2.5
 
       - name: Install Libraries
         run: |
           haxelib setup ~/haxelib
-          # Versões "Legacy" que a Psych 0.2.8 precisa:
           haxelib install lime 7.9.0 --quiet
           haxelib install openfl 9.1.0 --quiet
           haxelib install flixel 4.11.0 --quiet
           haxelib install flixel-addons 2.10.0 --quiet
           haxelib install flixel-ui 2.3.3 --quiet
           haxelib install hxcpp 4.2.1 --quiet
-          haxelib install tjson --quiet
-          haxelib install SScript --quiet
-          
-          # Git clones manuais para evitar erro de permissão
+          haxelib install tjson 1.4.0 --quiet
+          haxelib install SScript 5.2.0 --quiet
+          haxelib install flxanimate 1.2.0 --quiet
+
+          # Links completos para evitar o erro de 'repositório não existe'
           git clone github.com ~/haxelib/linc_luajit/git
           haxelib dev linc_luajit ~/haxelib/linc_luajit/git
           
           git clone github.com ~/haxelib/extension-androidtools/git
           haxelib dev extension-androidtools ~/haxelib/extension-androidtools/git
+
+          git clone github.com ~/haxelib/hxCodec/git
+          haxelib dev hxCodec ~/haxelib/hxCodec/git
 
       - name: Configure Lime Android
         run: |
@@ -50,7 +53,6 @@ jobs:
           haxelib run lime setup android -y
 
       - name: Build APK
-        # O comando -debug ajuda a ver o erro sem esconder as linhas (truncating)
         run: haxelib run lime build android -release
 
       - name: Upload Artifact
