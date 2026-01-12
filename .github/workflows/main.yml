@@ -1,5 +1,8 @@
-name: Build Android APK
-on: push
+name: Build Android
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -21,18 +24,32 @@ jobs:
 
       - name: Install Libraries
         run: |
-          haxelib install flixel
+          # Configuração inicial do haxelib
+          mkdir -p .haxelib
+          haxelib setup .haxelib
+          
+          # Bibliotecas padrão
+          haxelib install lime 8.1.2
+          haxelib install openfl 9.3.3
+          haxelib install flixel 5.6.2
           haxelib install flixel-addons
           haxelib install flixel-ui
-          haxelib install hxvlc
           haxelib install tjson
           haxelib install SScript
           haxelib install flxanimate
-          haxelib git linc_luajit github.com
-          haxelib git extension-androidtools github.com
+          
+          # Bibliotecas via Git (links corrigidos para 2026)
+          haxelib git hxvlc https://github.com/MAJigsaw77/hxvlc.git
+          haxelib git linc_luajit https://github.com/superpowers04/linc_luajit.git
+          haxelib git extension-androidtools https://github.com/MAJigsaw77/extension-androidtools.git
+          
+          # Instalação forçada da hxcpp (essencial para evitar erro de compilação no Android)
+          haxelib install hxcpp --quiet
+          
+          # Configura o Lime para Android
           haxelib run lime setup android
           
-      - name: Configure Android
+      - name: Configure Android Env
         run: |
           echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> $GITHUB_ENV
           echo "ANDROID_NDK_ROOT=$ANDROID_NDK_LATEST_HOME" >> $GITHUB_ENV
@@ -45,4 +62,3 @@ jobs:
         with:
           name: MADNESS-Android-APK
           path: export/release/android/bin/app/build/outputs/apk/release/*.apk
-          
