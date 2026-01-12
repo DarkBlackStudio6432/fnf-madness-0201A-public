@@ -24,11 +24,7 @@ jobs:
 
       - name: Install Libraries
         run: |
-          # Configuração inicial do haxelib
-          mkdir -p .haxelib
-          haxelib setup .haxelib
-          
-          # Bibliotecas padrão
+          haxelib setup ~/haxelib
           haxelib install lime 8.1.2
           haxelib install openfl 9.3.3
           haxelib install flixel 5.6.2
@@ -37,22 +33,18 @@ jobs:
           haxelib install tjson
           haxelib install SScript
           haxelib install flxanimate
-          
-          # Bibliotecas via Git (links corrigidos para 2026)
-          haxelib git hxvlc https://github.com/MAJigsaw77/hxvlc.git
-          haxelib git linc_luajit https://github.com/superpowers04/linc_luajit.git
-          haxelib git extension-androidtools https://github.com/MAJigsaw77/extension-androidtools.git
-          
-          # Instalação forçada da hxcpp (essencial para evitar erro de compilação no Android)
           haxelib install hxcpp --quiet
+          haxelib git hxvlc github.com
+          haxelib git linc_luajit github.com
+          haxelib git extension-androidtools github.com
           
-          # Configura o Lime para Android
-          haxelib run lime setup android
-          
-      - name: Configure Android Env
+      - name: Configure Lime Android
+        # Esse passo força o Lime a reconhecer os caminhos do SDK e NDK do GitHub
         run: |
-          echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> $GITHUB_ENV
-          echo "ANDROID_NDK_ROOT=$ANDROID_NDK_LATEST_HOME" >> $GITHUB_ENV
+          haxelib run lime setup -alias -y
+          haxelib run lime config ANDROID_SDK $ANDROID_HOME
+          haxelib run lime config ANDROID_NDK_ROOT $ANDROID_NDK_LATEST_HOME
+          haxelib run lime config JAVA_HOME $JAVA_HOME_17_X64
 
       - name: Build APK
         run: haxelib run lime build android -release
