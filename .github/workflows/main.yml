@@ -35,7 +35,7 @@ jobs:
           haxelib install SScript 5.2.0 --quiet
           haxelib install flxanimate 1.2.0 --quiet
 
-          # Links completos para evitar o erro de 'repositório não existe'
+          # Links completos corrigidos
           git clone github.com ~/haxelib/linc_luajit/git
           haxelib dev linc_luajit ~/haxelib/linc_luajit/git
           
