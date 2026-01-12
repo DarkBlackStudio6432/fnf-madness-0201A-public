@@ -27,7 +27,7 @@ jobs:
           haxe-version: 4.2.5
 
       # Instalar Android SDK manualmente (SEM ACTION BUGADA)
-      - name: Install Android SDK
+            - name: Install Android SDK
         run: |
           sudo apt-get update
           sudo apt-get install -y wget unzip
@@ -36,10 +36,13 @@ jobs:
           cd $HOME/android-sdk
 
           wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
-          unzip commandlinetools-linux-9477386_latest.zip
+
+          unzip commandlinetools-linux-9477386_latest.zip -d cmdline-tools-temp
 
           mkdir -p cmdline-tools/latest
-          mv cmdline-tools/* cmdline-tools/latest/
+          mv cmdline-tools-temp/cmdline-tools/* cmdline-tools/latest
+
+          rm -rf cmdline-tools-temp
 
           echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
           echo "PATH=$HOME/android-sdk/cmdline-tools/latest/bin:$PATH" >> $GITHUB_ENV
