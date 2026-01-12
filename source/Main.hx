@@ -2,10 +2,11 @@ package;
 
 #if android
 import android.content.Context;
+import android.os.Build;
+import android.Permissions;
 #end
 
 import debug.FPSCounter;
-
 import flixel.graphics.FlxGraphic;
 import flixel.FlxGame;
 import flixel.FlxState;
@@ -17,40 +18,31 @@ import openfl.events.Event;
 import openfl.display.StageScaleMode;
 import lime.app.Application;
 import states.TitleState;
+import flixel.FlxG; // Importante adicionar
+import flixel.util.FlxTimer;
 
-#if linux
-import lime.graphics.Image;
-#end
-
-//crash handler stuff
 #if CRASH_HANDLER
 import openfl.events.UncaughtErrorEvent;
 import haxe.CallStack;
-import haxe.io.Path;
+import sys.FileSystem;
+import sys.io.File;
 #end
 
-#if linux
-@:cppInclude('./external/gamemode_client.h')
-@:cppFileCode('
-	#define GAMEMODE_AUTO
-')
-#end
+using StringTools;
 
 class Main extends Sprite
 {
 	var game = {
-		width: 1280, // WINDOW width
-		height: 720, // WINDOW height
-		initialState: Init, // initial game state
-		zoom: -1.0, // game state bounds
-		framerate: 60, // default framerate
-		skipSplash: true, // if the default flixel splash screen should be skipped
-		startFullscreen: false // if the game should start at fullscreen mode
+		width: 1280,
+		height: 720,
+		initialState: states.Init, // Certifique-se que o caminho da Init state está correto
+		zoom: -1.0,
+		framerate: 60,
+		skipSplash: true,
+		startFullscreen: true // Mudei para true para mobile
 	};
 
 	public static var fpsVar:FPSCounter;
-
-	// You can pretty much ignore everything from here on - your code should go in your states.
 
 	public static function main():Void
 	{
@@ -61,8 +53,8 @@ class Main extends Sprite
 	{
 		super();
 
-		// Credits to MAJigsaw77 (he's the og author for this code)
 		#if android
+		// Define o diretório de trabalho para a pasta de arquivos do app no Android
 		Sys.setCwd(Path.addTrailingSlash(Context.getExternalFilesDir()));
 		#elseif ios
 		Sys.setCwd(lime.system.System.applicationStorageDirectory);
@@ -102,41 +94,25 @@ class Main extends Sprite
 			game.height = Math.ceil(stageHeight / game.zoom);
 		}
 	
-		#if LUA_ALLOWED Lua.set_callbacks_function(cpp.Callable.fromStaticFunction(psychlua.CallbackHandler.call)); #end
-		Controls.instance = new Controls();
-		ClientPrefs.loadDefaultKeys();
-		#if ACHIEVEMENTS_ALLOWED Achievements.load(); #end
 		addChild(new FlxGame(game.width, game.height, game.initialState, game.framerate, game.framerate, game.skipSplash, game.startFullscreen));
 
-		#if !mobile
+		// FPS Counter visível no Mobile também
 		fpsVar = new FPSCounter(10, 3, 0xFFFFFF);
 		addChild(fpsVar);
+		
+		#if mobile
+		// Ajuste de DPI para mobile não deixar o FPS minúsculo
+		fpsVar.scaleX = fpsVar.scaleY = 1.5; 
+		#end
+
 		Lib.current.stage.align = "tl";
 		Lib.current.stage.scaleMode = StageScaleMode.NO_SCALE;
-		if(fpsVar != null) {
-			fpsVar.visible = ClientPrefs.data.showFPS;
-		}
-		#end
 
-		#if linux
-		var icon = Image.fromFile("icon.png");
-		Lib.current.stage.window.setIcon(icon);
-		#end
-
-		#if html5
-		FlxG.autoPause = false;
-		FlxG.mouse.visible = false;
-		#end
-		
 		#if CRASH_HANDLER
 		Lib.current.loaderInfo.uncaughtErrorEvents.addEventListener(UncaughtErrorEvent.UNCAUGHT_ERROR, onCrash);
 		#end
 
-		#if DISCORD_ALLOWED
-		DiscordClient.prepare();
-		#end
-
-		// shader coords fix
+		// Shader fix
 		FlxG.signals.gameResized.add(function (w, h) {
 		     if (FlxG.cameras != null) {
 			   for (cam in FlxG.cameras.list) {
@@ -144,38 +120,27 @@ class Main extends Sprite
 					resetSpriteCache(cam.flashSprite);
 			   }
 			}
-
-			if (FlxG.game != null)
-			resetSpriteCache(FlxG.game);
-		});
-
-		FlxG.signals.focusGained.add(()->{
-			FlxG.mouse.enabled = false;
-			FlxTimer.wait(0.01,()->FlxG.mouse.enabled = true);
+			if (FlxG.game != null) resetSpriteCache(FlxG.game);
 		});
 	}
 
 	static function resetSpriteCache(sprite:Sprite):Void {
 		@:privateAccess {
-		        sprite.__cacheBitmap = null;
+		    sprite.__cacheBitmap = null;
 			sprite.__cacheBitmapData = null;
 		}
 	}
 
-	// Code was entirely made by sqirra-rng for their fnf engine named "Izzy Engine", big props to them!!!
-	// very cool person for real they don't get enough credit for their work
 	#if CRASH_HANDLER
 	function onCrash(e:UncaughtErrorEvent):Void
 	{
 		var errMsg:String = "";
 		var path:String;
 		var callStack:Array<StackItem> = CallStack.exceptionStack(true);
-		var dateNow:String = Date.now().toString();
+		var dateNow:String = Date.now().toString().replace(" ", "_").replace(":", "'");
 
-		dateNow = dateNow.replace(" ", "_");
-		dateNow = dateNow.replace(":", "'");
-
-		path = "./crash/" + "PsychEngine_" + dateNow + ".txt";
+		// No Android, salva na pasta de dados do app
+		path = "crash_" + dateNow + ".txt";
 
 		for (stackItem in callStack)
 		{
@@ -184,24 +149,15 @@ class Main extends Sprite
 				case FilePos(s, file, line, column):
 					errMsg += file + " (line " + line + ")\n";
 				default:
-					Sys.println(stackItem);
 			}
 		}
 
-		errMsg += "\nUncaught Error: " + e.error + "\nPlease report this error to the GitHub page: https://github.com/ShadowMario/FNF-PsychEngine\n\n> Crash Handler written by: sqirra-rng";
-
-		if (!FileSystem.exists("./crash/"))
-			FileSystem.createDirectory("./crash/");
-
-		File.saveContent(path, errMsg + "\n");
-
+		errMsg += "\nUncaught Error: " + e.error;
+		
+		File.saveContent(path, errMsg);
 		Sys.println(errMsg);
-		Sys.println("Crash dump saved in " + Path.normalize(path));
 
 		Application.current.window.alert(errMsg, "Error!");
-		#if DISCORD_ALLOWED
-		DiscordClient.shutdown();
-		#end
 		Sys.exit(1);
 	}
 	#end
