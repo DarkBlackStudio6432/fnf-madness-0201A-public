@@ -46,21 +46,21 @@ jobs:
       - name: Install Project Libs
         run: |
           sudo apt-get install -y libxml2-utils
+          # Localiza o Project.xml do seu mod
           PROJECT_FILE=$(find . -maxdepth 2 -iname "project.xml" -print -quit)
           
           if [ -z "$PROJECT_FILE" ]; then
-            echo "ERRO: Project.xml não encontrado!"
+            echo "ERRO: Project.xml não encontrado na raiz do seu repositório!"
             exit 1
           fi
 
+          # Instala automaticamente todas as libs listadas no seu Project.xml
           LIBS=$(xmllint --xpath '//haxelib/@name' "$PROJECT_FILE" | sed 's/name=//g' | tr -d '"')
           for lib in $LIBS; do
             if [[ "$lib" != "lime" && "$lib" != "hxcpp" ]]; then
               haxelib install $lib --quiet || echo "Aviso: falha em $lib"
             fi
           done
-          # CORREÇÃO AQUI:
-          haxelib git linc_luajit github.com
 
       - name: Configure and Build
         run: |
@@ -69,7 +69,8 @@ jobs:
           haxelib run lime config JAVA_HOME $JAVA_HOME
           haxelib run lime setup android -y
           
-          PROJECT_DIR=$(dirname $(find . -maxdepth 2 -iname "Project.xml" -print -quit))
+          # Entra na pasta do seu mod e compila
+          PROJECT_DIR=$(dirname $(find . -maxdepth 2 -iname "project.xml" -print -quit))
           cd $PROJECT_DIR
           haxelib run lime build android -release
 
