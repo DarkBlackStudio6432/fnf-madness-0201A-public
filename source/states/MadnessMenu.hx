@@ -5,23 +5,23 @@ import flixel.addons.display.FlxTiledSprite;
 import options.OptionsState;
 import flixel.math.FlxRect;
 import openfl.display.BitmapData;
-import flixel.input.mouse.FlxMouseEvent;
 import flixel.addons.display.FlxBackdrop;
 using states.MadnessMenu.SpriteHelper;
 
-enum Hovering {
-    OPTIONS;
-    ANYTHINGELSE;
-}
-
 class MadnessMenu extends MusicBeatState
 {
-    var hoverMode:Hovering = ANYTHINGELSE;
+    // 🔒 Substitui o enum (EVITA CRASH)
+    static inline var HOVER_OPTIONS:Int = 1;
+    static inline var HOVER_OTHER:Int = 0;
 
-    public static var mouseGraphic:BitmapData = BitmapData.fromFile('assets/shared/images/madnessmenu/mouse.png');
+    var hoverMode:Int = HOVER_OTHER;
+
+    public static var mouseGraphic:BitmapData =
+        BitmapData.fromFile('assets/shared/images/madnessmenu/mouse.png');
+
     var uniScale:Float;
-
     var currentSel:Int = 0;
+
     var baseButtons:FlxTypedGroup<FlxSprite>;
     var optionsButton:FlxSprite;
     var circles:FlxSpriteGroup;
@@ -30,8 +30,6 @@ class MadnessMenu extends MusicBeatState
 
     override function create()
     {
-        Paths.sound("coming soon");
-
         #if !FLX_NO_MOUSE
         FlxG.mouse.visible = true;
         FlxG.mouse.load(mouseGraphic, 0.5);
@@ -56,15 +54,6 @@ class MadnessMenu extends MusicBeatState
         silh.alpha = 0.3;
         add(silh);
 
-        var chars = [['hank','idle','100,300'],['gf','girlfriend','100,180'],['bf','bf','100,300']];
-        var opt = FlxG.random.getObject(chars);
-        var pos = opt[2].split(',');
-        var char = new FlxAnimate(Std.parseFloat(pos[0]), Std.parseFloat(pos[1]), 'assets/shared/images/madnessmenu/${opt[0]}');
-        char.anim.addBySymbol('i', opt[1], 24, true);
-        char.anim.play('i');
-        char.scale.set(0.6, 0.6);
-        add(char);
-
         storyDropDown = new StorySubMenu();
         add(storyDropDown);
 
@@ -85,40 +74,18 @@ class MadnessMenu extends MusicBeatState
         optionsButton.setPosition(storyButton.x + storyButton.width + 10, 760 * uniScale);
         add(optionsButton);
 
-        var topBar = new FlxSprite(Paths.image('madnessmenu/top bar'));
-        topBar.setScale(uniScale);
-        add(topBar);
-
-        new FlxTimer().start(FlxG.random.float(0.5, 1.5), moveSquare, 3);
-
         circles = new FlxSpriteGroup();
         add(circles);
 
         super.create();
         changeSel();
-
-        new FlxTimer().start(5, function(timer)
-        {
-            var circle = circles.recycle(FlxSprite);
-            circle.loadGraphic(Paths.image('madnessmenu/circle'));
-            circle.setScale(uniScale * 0.2);
-            circle.alpha = 0.08;
-            add(circle);
-
-            var scaleTime = FlxG.random.float(7, 12);
-            FlxTween.tween(circle.scale, {x: 2, y: 2}, scaleTime, {
-                onComplete: function(_) circle.kill()
-            });
-
-            timer.reset(FlxG.random.float(6, 13));
-        });
     }
 
     override function update(elapsed:Float)
     {
         super.update(elapsed);
 
-        if ((controls.UI_LEFT_P || controls.UI_RIGHT_P) && hoverMode != OPTIONS)
+        if ((controls.UI_LEFT_P || controls.UI_RIGHT_P) && hoverMode != HOVER_OPTIONS)
             changeSel(controls.UI_LEFT_P ? -1 : 1);
 
         if (controls.ACCEPT)
@@ -128,11 +95,6 @@ class MadnessMenu extends MusicBeatState
             else
                 confirmSel();
         }
-
-        #if !FLX_NO_KEYBOARD
-        if (FlxG.keys.justPressed.C)
-            FlxG.switchState(new MadnessCredits());
-        #end
 
         #if !FLX_NO_MOUSE
         for (i in baseButtons)
@@ -150,39 +112,23 @@ class MadnessMenu extends MusicBeatState
         #end
     }
 
-    function moveSquare(?_)
-    {
-        var square = makeSquare();
-        square.alpha = 0;
-
-        new FlxTimer().start(FlxG.random.float(1, 3), function(_)
-        {
-            FlxTween.tween(square, {alpha: 0.25}, 1, {
-                onComplete: function(_) square.destroy()
-            });
-        });
-    }
-
-    inline function makeSquare():FlxSprite
-    {
-        var size = Std.int(18 * uniScale);
-        var square = new FlxSprite().makeGraphic(size, size, FlxColor.RED);
-        add(square);
-        return square;
-    }
-
     function confirmSel()
     {
         FlxG.sound.play(Paths.sound('madness/select'));
-        var button = hoverMode == OPTIONS ? optionsButton : baseButtons.members[currentSel];
-        button.animation.play('confirm');
 
-        if (hoverMode == OPTIONS)
+        if (hoverMode == HOVER_OPTIONS)
+        {
             MusicBeatState.switchState(new OptionsState());
-        else if (currentSel == 1)
-            MusicBeatState.switchState(new MadnessCredits());
-        else
-            openStoryDropdown();
+            return;
+        }
+
+        switch (currentSel)
+        {
+            case 0:
+                openStoryDropdown();
+            case 1:
+                MusicBeatState.switchState(new MadnessCredits());
+        }
     }
 
     function openStoryDropdown()
@@ -202,10 +148,10 @@ class MadnessMenu extends MusicBeatState
     {
         var spr = new FlxSprite();
         spr.frames = Paths.getSparrowAtlas("madnessmenu/" + path);
-        spr.animation.addByPrefix('i', path + '0');
+        spr.animation.addByPrefix('idle', path + '0');
         spr.animation.addByPrefix('confirm', path + ' confirm');
         spr.animation.addByPrefix('select', path + ' select');
-        spr.animation.play('i');
+        spr.animation.play('idle');
         spr.setScale(uniScale + 0.2);
         return spr;
     }
