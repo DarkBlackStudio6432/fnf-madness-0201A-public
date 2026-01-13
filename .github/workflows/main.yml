@@ -65,33 +65,36 @@ jobs:
         with:
           haxe-version: 4.2.5
 
-      # 6️⃣ Instalar todas as bibliotecas Haxe do projeto automaticamente
-      - name: Install Haxe Libraries
+      # 6️⃣ Instalar todas as bibliotecas Haxe automaticamente
+      - name: Install All Haxe Libraries
         run: |
           echo "y" | haxelib setup ~/haxelib
 
-          # Instala libs listadas no haxelib.json ou manualmente
-          haxelib install lime --quiet
-          haxelib install openfl --quiet
-          haxelib install flixel --quiet
-          haxelib install flixel-addons --quiet
-          haxelib install flixel-ui --quiet
-          haxelib install tjson --quiet
-          
-          # hxcpp manual
-          curl -L https://github.com/HaxeFoundation/hxcpp/releases/download/v4.3.45/hxcpp-4.3.45.zip -o hxcpp.zip
-          haxelib install hxcpp.zip --quiet
+          # Detecta libs no haxelib.json, project.xml ou adiciona libs manualmente
+          # (Você pode adicionar libs extras aqui)
+          LIBS=(lime openfl flixel flixel-addons flixel-ui tjson hxcpp extension-androidtools)
+
+          for lib in "${LIBS[@]}"; do
+            echo "Installing $lib..."
+            if [[ "$lib" == "hxcpp" ]]; then
+              curl -L https://github.com/HaxeFoundation/hxcpp/releases/download/v4.3.45/hxcpp-4.3.45.zip -o hxcpp.zip
+              haxelib install hxcpp.zip --quiet
+            else
+              haxelib install $lib --quiet || echo "$lib já está instalado"
+            fi
+          done
+
+          # Rebuild de todas as libs para Android
+          for lib in "${LIBS[@]}"; do
+            echo "Rebuilding $lib..."
+            haxelib run lime rebuild $lib || echo "Falha no rebuild de $lib, continuar"
+          done
 
           # linc_luajit
           git clone https://github.com/nebulazorua/linc_luajit.git ~/haxelib/linc_luajit/git
           haxelib dev linc_luajit ~/haxelib/linc_luajit/git
 
-          # Rebuild das libs para Android
-          haxelib run lime rebuild lime
-          haxelib run lime rebuild tjson
-          haxelib run lime rebuild hxcpp
-
-      # 7️⃣ Configurar Lime/Android
+      # 7️⃣ Configurar Lime para Android
       - name: Configure Lime Android
         run: |
           export ANDROID_HOME=$HOME/android-sdk
