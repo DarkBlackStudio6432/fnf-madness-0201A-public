@@ -19,36 +19,12 @@ jobs:
           distribution: temurin
           java-version: "11"
 
-            # 3️⃣ Instalar Android SDK (Correção Final Anti-Bloqueio)
-      - name: Install Android SDK
+      # 3️⃣ Setup Android SDK usando a Action Oficial (Mais seguro para 2026)
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android Components
         run: |
-          sudo apt-get update
-          sudo apt-get install -y wget unzip jq libxml2-utils
-          
-          mkdir -p $HOME/android-sdk/cmdline-tools
-          cd $HOME/android-sdk
-          
-          # Baixando com User-Agent de navegador para evitar o bloqueio do Google
-          curl -H "User-Agent: Mozilla/5.0" -L "dl.google.com" -o sdk.zip
-          
-          # Verifica se o arquivo é um ZIP real antes de tentar descompactar
-          if ! unzip -t sdk.zip > /dev/null; then
-            echo "ERRO: O download falhou ou o arquivo está corrompido."
-            exit 1
-          fi
-          
-          unzip sdk.zip
-          mkdir -p cmdline-tools/latest
-          mv cmdline-tools/* cmdline-tools/latest/ 2>/dev/null || true
-          rm sdk.zip
-
-          echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
-          echo "PATH=$HOME/android-sdk/cmdline-tools/latest/bin:$HOME/android-sdk/platform-tools:$PATH" >> $GITHUB_ENV
-
-
-      - name: Install Android Packages
-        run: |
-          yes | sdkmanager --licenses || true
           sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2" "ndk;21.4.7075529"
           echo "ANDROID_NDK_ROOT=$ANDROID_HOME/ndk/21.4.7075529" >> $GITHUB_ENV
 
@@ -66,6 +42,7 @@ jobs:
 
       - name: Install Project Libs
         run: |
+          sudo apt-get install -y libxml2-utils
           PROJECT_FILE=$(find . -maxdepth 2 -iname "project.xml" -print -quit)
           
           if [ -z "$PROJECT_FILE" ]; then
@@ -76,10 +53,9 @@ jobs:
           LIBS=$(xmllint --xpath '//haxelib/@name' "$PROJECT_FILE" | sed 's/name=//g' | tr -d '"')
           for lib in $LIBS; do
             if [[ "$lib" != "lime" && "$lib" != "hxcpp" ]]; then
-              haxelib install $lib --quiet || echo "Falhou $lib"
+              haxelib install $lib --quiet || echo "Aviso: falha em $lib"
             fi
           done
-          # LINK COMPLETO DO LINC_LUAJIT
           haxelib git linc_luajit github.com
 
       - name: Configure and Build
