@@ -13,7 +13,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Java 17
+            - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -36,11 +36,17 @@ jobs:
         with:
           haxe-version: 4.2.5
 
-      - name: Install Base Libs
+            - name: Install Base Libs
         run: |
           haxelib setup ~/haxelib
-          haxelib install lime --quiet
-          haxelib install hxcpp --quiet
+          haxelib install lime 8.1.2 --quiet
+          haxelib install openfl 9.3.3 --quiet
+          haxelib install flixel 5.5.0 --quiet
+          haxelib install flixel-addons 3.2.2 --quiet
+          haxelib install flixel-ui 2.5.0 --quiet
+          haxelib install hxcpp 4.3.2 --quiet
+          haxelib git hxvlc github.com --quiet
+          haxelib git SUtil github.com --quiet
           haxelib run lime rebuild hxcpp
 
       - name: Install Project Libs
