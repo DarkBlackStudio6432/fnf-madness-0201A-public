@@ -2,12 +2,12 @@ package states.editors;
 
 #if android
 
-class CharacterEditorState extends MusicBeatState
+class ChartingState extends MusicBeatState
 {
 	override function create()
 	{
 		super.create();
-		// Editor desativado no Android
+		// Charting desativado no Android
 	}
 }
 
