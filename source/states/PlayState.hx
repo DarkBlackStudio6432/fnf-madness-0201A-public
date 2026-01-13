@@ -239,8 +239,8 @@ class PlayState extends MusicBeatState
 	public var introSoundsSuffix:String = '';
 
 	// Less laggy controls
-	private var keysArray:Array<String>;
-	public var songName:String;
+	public var noteTypes:Array<String> = [];
+        public var eventsPushed:Array<String> = [];
 
 	// Callbacks for stages
 	public var startCallback:Void->Void = null;
@@ -248,9 +248,6 @@ class PlayState extends MusicBeatState
 
 	public var playerBar:MadnessBar;
 	public var oppBar:MadnessBar;
-
-
-
 
 	public var charFocus:Character = null;
 	public var cameraZoomMult:Float = 1;
