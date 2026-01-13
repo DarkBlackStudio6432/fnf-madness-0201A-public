@@ -1,5 +1,18 @@
 package states.editors;
 
+#if android
+
+class CharacterEditorState extends MusicBeatState
+{
+	override function create()
+	{
+		super.create();
+		// Editor desativado no Android
+	}
+}
+
+#else
+
 import flash.geom.Rectangle;
 import haxe.Json;
 import haxe.format.JsonParser;
@@ -3299,4 +3312,4 @@ class AttachedFlxText extends FlxText
 		}
 	}
 }
-
+#end
