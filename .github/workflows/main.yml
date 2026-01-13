@@ -23,11 +23,18 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y wget unzip jq libxml2-utils
-          mkdir -p $HOME/android-sdk/cmdline-tools/latest
+          
+          mkdir -p $HOME/android-sdk/cmdline-tools
           cd $HOME/android-sdk
-          wget dl.google.com
-          unzip commandlinetools-linux-9477386_latest.zip
-          mv cmdline-tools/* cmdline-tools/latest/ || true
+          
+          # URL COMPLETA PARA 2026
+          curl -L "dl.google.com" -o sdk.zip
+          
+          unzip sdk.zip
+          mkdir -p cmdline-tools/latest
+          mv cmdline-tools/* cmdline-tools/latest/ 2>/dev/null || true
+          rm sdk.zip
+
           echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
           echo "PATH=$HOME/android-sdk/cmdline-tools/latest/bin:$HOME/android-sdk/platform-tools:$PATH" >> $GITHUB_ENV
 
@@ -51,22 +58,20 @@ jobs:
 
       - name: Install Project Libs
         run: |
-          # Procura o arquivo Project.xml ignorando se é maiúsculo ou minúsculo
           PROJECT_FILE=$(find . -maxdepth 2 -iname "project.xml" -print -quit)
           
           if [ -z "$PROJECT_FILE" ]; then
-            echo "ERRO: Arquivo Project.xml não encontrado na raiz!"
-            ls -R
+            echo "ERRO: Project.xml não encontrado!"
             exit 1
           fi
 
-          # Extrai e instala as libs do XML
           LIBS=$(xmllint --xpath '//haxelib/@name' "$PROJECT_FILE" | sed 's/name=//g' | tr -d '"')
           for lib in $LIBS; do
             if [[ "$lib" != "lime" && "$lib" != "hxcpp" ]]; then
-              haxelib install $lib --quiet || echo "Aviso: falha em $lib"
+              haxelib install $lib --quiet || echo "Falhou $lib"
             fi
           done
+          # LINK COMPLETO DO LINC_LUAJIT
           haxelib git linc_luajit github.com
 
       - name: Configure and Build
@@ -76,7 +81,6 @@ jobs:
           haxelib run lime config JAVA_HOME $JAVA_HOME
           haxelib run lime setup android -y
           
-          # Localiza a pasta do mod e compila
           PROJECT_DIR=$(dirname $(find . -maxdepth 2 -iname "project.xml" -print -quit))
           cd $PROJECT_DIR
           haxelib run lime build android -release
