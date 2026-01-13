@@ -75,27 +75,38 @@ jobs:
           haxelib run lime rebuild hxcpp
           haxelib run lime rebuild lime
 
-      # 7️⃣ Instalar todas as libs automaticamente do project.xml e haxelib.json
+      # 7️⃣ Instalar todas as libs automaticamente
       - name: Install All Haxe Libraries Automatically
         run: |
-          # libs do haxelib.json
+          echo "y" | haxelib setup ~/haxelib
+
+          # --- libs do haxelib.json ---
           HAXELIB_JSON_LIBS=""
           if [ -f haxelib.json ]; then
-            HAXELIB_JSON_LIBS=$(jq -r '.dependencies | keys[]' haxelib.json)
-            echo "Libs do haxelib.json: $HAXELIB_JSON_LIBS"
+            if jq -e '.dependencies' haxelib.json >/dev/null 2>&1; then
+              HAXELIB_JSON_LIBS=$(jq -r '.dependencies | keys[]' haxelib.json)
+              echo "Libs do haxelib.json: $HAXELIB_JSON_LIBS"
+            else
+              echo "haxelib.json não tem 'dependencies', pulando"
+            fi
+          else
+            echo "haxelib.json não encontrado, pulando"
           fi
 
-          # libs do project.xml
+          # --- libs do project.xml ---
           PROJECT_XML_LIBS=""
           if [ -f project.xml ]; then
             PROJECT_XML_LIBS=$(xmllint --xpath '//haxelib/@name' project.xml | sed 's/name=//g' | tr -d '"')
             echo "Libs do project.xml: $PROJECT_XML_LIBS"
+          else
+            echo "project.xml não encontrado, pulando"
           fi
 
-          # Combinar e remover duplicatas
+          # --- Combinar e remover duplicatas ---
           ALL_LIBS=$(echo -e "$HAXELIB_JSON_LIBS\n$PROJECT_XML_LIBS" | sort -u | grep -v '^$')
           echo "Instalando e rebuildando as seguintes libs: $ALL_LIBS"
 
+          # --- Instalar e rebuildar libs (exceto lime/hxcpp já instalados) ---
           for lib in $ALL_LIBS; do
             if [[ "$lib" != "lime" && "$lib" != "hxcpp" ]]; then
               echo "Instalando $lib..."
