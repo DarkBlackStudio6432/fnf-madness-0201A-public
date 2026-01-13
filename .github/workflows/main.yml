@@ -25,7 +25,7 @@ jobs:
       - name: Install Android SDK
         run: |
           sudo apt-get update
-          sudo apt-get install -y wget unzip jq
+          sudo apt-get install -y wget unzip jq libxml2-utils
 
           mkdir -p $HOME/android-sdk
           cd $HOME/android-sdk
@@ -65,47 +65,51 @@ jobs:
         with:
           haxe-version: 4.2.5
 
-      # 6️⃣ Instalar todas as libs automaticamente do project.xml e haxelib.json
-      - name: Install All Haxe Libraries Automatically
+      # 6️⃣ Instalar Lime e hxcpp primeiro
+      - name: Install lime and hxcpp
         run: |
           echo "y" | haxelib setup ~/haxelib
+          curl -L https://github.com/HaxeFoundation/hxcpp/releases/download/v4.3.45/hxcpp-4.3.45.zip -o hxcpp.zip
+          haxelib install hxcpp.zip --quiet
+          haxelib install lime --quiet
+          haxelib run lime rebuild hxcpp
+          haxelib run lime rebuild lime
 
-          # --- Ler libs do haxelib.json ---
+      # 7️⃣ Instalar todas as libs automaticamente do project.xml e haxelib.json
+      - name: Install All Haxe Libraries Automatically
+        run: |
+          # libs do haxelib.json
           HAXELIB_JSON_LIBS=""
           if [ -f haxelib.json ]; then
             HAXELIB_JSON_LIBS=$(jq -r '.dependencies | keys[]' haxelib.json)
-            echo "Libs encontradas no haxelib.json: $HAXELIB_JSON_LIBS"
+            echo "Libs do haxelib.json: $HAXELIB_JSON_LIBS"
           fi
 
-          # --- Ler libs do project.xml ---
+          # libs do project.xml
           PROJECT_XML_LIBS=""
           if [ -f project.xml ]; then
-            PROJECT_XML_LIBS=$(xmllint --xpath 'string(//haxelib/@name)' project.xml | tr ' ' '\n')
-            echo "Libs encontradas no project.xml: $PROJECT_XML_LIBS"
+            PROJECT_XML_LIBS=$(xmllint --xpath '//haxelib/@name' project.xml | sed 's/name=//g' | tr -d '"')
+            echo "Libs do project.xml: $PROJECT_XML_LIBS"
           fi
 
-          # --- Combinar todas as libs únicas ---
-          ALL_LIBS=$(echo -e "$HAXELIB_JSON_LIBS\n$PROJECT_XML_LIBS" | sort -u)
+          # Combinar e remover duplicatas
+          ALL_LIBS=$(echo -e "$HAXELIB_JSON_LIBS\n$PROJECT_XML_LIBS" | sort -u | grep -v '^$')
           echo "Instalando e rebuildando as seguintes libs: $ALL_LIBS"
 
-          # --- Instalar e rebuildar ---
           for lib in $ALL_LIBS; do
-            echo "Instalando $lib..."
-            if [[ "$lib" == "hxcpp" ]]; then
-              curl -L https://github.com/HaxeFoundation/hxcpp/releases/download/v4.3.45/hxcpp-4.3.45.zip -o hxcpp.zip
-              haxelib install hxcpp.zip --quiet
-            else
+            if [[ "$lib" != "lime" && "$lib" != "hxcpp" ]]; then
+              echo "Instalando $lib..."
               haxelib install $lib --quiet || echo "$lib já instalado"
+              echo "Rebuild $lib..."
+              haxelib run lime rebuild $lib || echo "Falha no rebuild de $lib, continuar"
             fi
-            echo "Rebuild $lib..."
-            haxelib run lime rebuild $lib || echo "Falha no rebuild de $lib, continuar"
           done
 
           # linc_luajit
           git clone https://github.com/nebulazorua/linc_luajit.git ~/haxelib/linc_luajit/git
           haxelib dev linc_luajit ~/haxelib/linc_luajit/git
 
-      # 7️⃣ Configurar Lime para Android
+      # 8️⃣ Configurar Lime para Android
       - name: Configure Lime Android
         run: |
           export ANDROID_HOME=$HOME/android-sdk
@@ -118,11 +122,11 @@ jobs:
           haxelib run lime config JAVA_HOME=$JAVA_HOME
           haxelib run lime setup android -y
 
-      # 8️⃣ Build APK
+      # 9️⃣ Build APK
       - name: Build APK
         run: haxelib run lime build android -release
 
-      # 9️⃣ Upload APK como artefato
+      # 🔟 Upload APK
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
