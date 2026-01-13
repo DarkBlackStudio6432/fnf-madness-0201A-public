@@ -14,7 +14,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 2️⃣ Setup Java 11 (necessário para Android SDK)
+      # 2️⃣ Setup Java 11 (para Android SDK)
       - name: Setup Java 11
         uses: actions/setup-java@v4
         with:
@@ -25,7 +25,7 @@ jobs:
       - name: Install Android SDK
         run: |
           sudo apt-get update
-          sudo apt-get install -y wget unzip
+          sudo apt-get install -y wget unzip jq
 
           mkdir -p $HOME/android-sdk
           cd $HOME/android-sdk
@@ -59,28 +59,37 @@ jobs:
           distribution: temurin
           java-version: "8"
 
-      # 5️⃣ Instalar Haxe
+      # 5️⃣ Setup Haxe
       - name: Setup Haxe
         uses: krdlab/setup-haxe@v1
         with:
           haxe-version: 4.2.5
 
-      # 6️⃣ Instalar todas as libs automaticamente
+      # 6️⃣ Instalar todas as libs automaticamente do project.xml e haxelib.json
       - name: Install All Haxe Libraries Automatically
         run: |
           echo "y" | haxelib setup ~/haxelib
 
-          # Detecta todas as libs do haxelib.json
+          # --- Ler libs do haxelib.json ---
+          HAXELIB_JSON_LIBS=""
           if [ -f haxelib.json ]; then
-            LIBS=$(jq -r '.dependencies | keys[]' haxelib.json)
-          else
-            echo "Arquivo haxelib.json não encontrado, usando lista manual mínima"
-            LIBS="lime openfl hxcpp"
+            HAXELIB_JSON_LIBS=$(jq -r '.dependencies | keys[]' haxelib.json)
+            echo "Libs encontradas no haxelib.json: $HAXELIB_JSON_LIBS"
           fi
 
-          echo "Instalando as libs: $LIBS"
+          # --- Ler libs do project.xml ---
+          PROJECT_XML_LIBS=""
+          if [ -f project.xml ]; then
+            PROJECT_XML_LIBS=$(xmllint --xpath 'string(//haxelib/@name)' project.xml | tr ' ' '\n')
+            echo "Libs encontradas no project.xml: $PROJECT_XML_LIBS"
+          fi
 
-          for lib in $LIBS; do
+          # --- Combinar todas as libs únicas ---
+          ALL_LIBS=$(echo -e "$HAXELIB_JSON_LIBS\n$PROJECT_XML_LIBS" | sort -u)
+          echo "Instalando e rebuildando as seguintes libs: $ALL_LIBS"
+
+          # --- Instalar e rebuildar ---
+          for lib in $ALL_LIBS; do
             echo "Instalando $lib..."
             if [[ "$lib" == "hxcpp" ]]; then
               curl -L https://github.com/HaxeFoundation/hxcpp/releases/download/v4.3.45/hxcpp-4.3.45.zip -o hxcpp.zip
@@ -88,10 +97,6 @@ jobs:
             else
               haxelib install $lib --quiet || echo "$lib já instalado"
             fi
-          done
-
-          # Rebuild de todas as libs para Android
-          for lib in $LIBS; do
             echo "Rebuild $lib..."
             haxelib run lime rebuild $lib || echo "Falha no rebuild de $lib, continuar"
           done
