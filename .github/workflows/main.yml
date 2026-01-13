@@ -101,7 +101,7 @@ jobs:
             echo "haxelib.json não encontrado, pulando"
           fi
 
-          # Ler project.xml se existir
+          # Ler Project.xml se existir
           if [ -f project.xml ]; then
             PROJECT_XML_LIBS=$(xmllint --xpath '//haxelib/@name' project.xml 2>/dev/null | sed 's/name=//g' | tr -d '"')
             echo "Libs do project.xml: $PROJECT_XML_LIBS"
