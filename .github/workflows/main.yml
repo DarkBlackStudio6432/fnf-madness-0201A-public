@@ -38,18 +38,15 @@ jobs:
 
       - name: Install Base Libs
         run: |
-          haxelib setup ~/haxelib
-          haxelib install lime 8.1.2 --quiet
-          haxelib install openfl 9.3.3 --quiet
-          haxelib install flixel 5.5.0 --quiet
-          haxelib install flixel-addons 3.2.2 --quiet
-          haxelib install flixel-ui 2.5.0 --quiet
-          haxelib install hxcpp 4.3.2 --quiet
-          # LINKS COMPLETOS (ESSENCIAIS PARA FUNCIONAR)
-          haxelib git hxvlc https://github.com/MAJigsaw77/hxvlc.git --quiet
-          haxelib git SUtil github.com --quiet
-          haxelib run lime rebuild hxcpp
-
+         haxelib setup ~/haxelib
+         haxelib install lime 8.1.2 --quiet
+         haxelib install openfl 9.3.3 --quiet
+         haxelib install flixel 5.5.0 --quiet
+         haxelib install flixel-addons 3.2.2 --quiet
+         haxelib install flixel-ui 2.5.0 --quiet
+         haxelib install hxcpp 4.3.2 --quiet
+         haxelib git hxvlc https://github.com/MAJigsaw77/hxvlc.git --quiet
+         haxelib run lime rebuild hxcpp
       - name: Install Project Libs
         run: |
           sudo apt-get install -y libxml2-utils
