@@ -661,8 +661,10 @@ class PlayState extends MusicBeatState
 		startCallback();
 		RecalculateRating();
 
-		FlxG.stage.addEventListener(KeyboardEvent.KEY_DOWN, onKeyPress);
-		FlxG.stage.addEventListener(KeyboardEvent.KEY_UP, onKeyRelease);
+		#if !FLX_NO_KEYBOARD
+FlxG.stage.addEventListener(KeyboardEvent.KEY_DOWN, onKeyPress);
+FlxG.stage.addEventListener(KeyboardEvent.KEY_UP, onKeyRelease);
+#end
 
 		//PRECACHING THINGS THAT GET USED FREQUENTLY TO AVOID LAGSPIKES
 		if(ClientPrefs.data.hitsoundVolume > 0) Paths.sound('hitsound');
@@ -1596,6 +1598,7 @@ class PlayState extends MusicBeatState
 					}
 				}
 				opponentStrums.add(babyArrow);
+				
 			}
 
 			strumLineNotes.add(babyArrow);
@@ -3229,8 +3232,10 @@ class PlayState extends MusicBeatState
 			hscriptArray.pop();
 		#end
 
-		FlxG.stage.removeEventListener(KeyboardEvent.KEY_DOWN, onKeyPress);
-		FlxG.stage.removeEventListener(KeyboardEvent.KEY_UP, onKeyRelease);
+		#if !FLX_NO_KEYBOARD
+FlxG.stage.removeEventListener(KeyboardEvent.KEY_DOWN, onKeyPress);
+FlxG.stage.removeEventListener(KeyboardEvent.KEY_UP, onKeyRelease);
+#end
 		FlxG.animationTimeScale = 1;
 		#if FLX_PITCH FlxG.sound.music.pitch = 1; #end
 		Note.globalRgbShaders = [];
@@ -3744,5 +3749,16 @@ class PlayState extends MusicBeatState
 		#end
 		return false;
 	}
+	
+	override public function destroy()
+{
+    #if !FLX_NO_KEYBOARD
+    FlxG.stage.removeEventListener(KeyboardEvent.KEY_DOWN, onKeyPress);
+    FlxG.stage.removeEventListener(KeyboardEvent.KEY_UP, onKeyRelease);
+    #end
+
+    super.destroy();
+}
+	
 	#end
 }
