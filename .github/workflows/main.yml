@@ -9,10 +9,18 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    defaults:
+      run:
+        shell: bash
+
     steps:
       # 1️⃣ Checkout do código
       - name: Checkout
         uses: actions/checkout@v4
+
+      # 1.1️⃣ Entrar na pasta do projeto (substitua "game" se necessário)
+      - name: Go to project folder
+        run: cd game  # <-- se seu projeto está na raiz, remova esta linha
 
       # 2️⃣ Setup Java 11 (para Android SDK)
       - name: Setup Java 11
@@ -65,7 +73,7 @@ jobs:
         with:
           haxe-version: 4.2.5
 
-      # 6️⃣ Instalar Lime e hxcpp primeiro
+      # 6️⃣ Instalar lime e hxcpp primeiro
       - name: Install lime and hxcpp
         run: |
           echo "y" | haxelib setup ~/haxelib
@@ -75,13 +83,15 @@ jobs:
           haxelib run lime rebuild hxcpp
           haxelib run lime rebuild lime
 
-      # 7️⃣ Instalar todas as libs automaticamente
+      # 7️⃣ Instalar todas as libs do project.xml e haxelib.json de forma segura
       - name: Install All Haxe Libraries Automatically
         run: |
           echo "y" | haxelib setup ~/haxelib
 
-          # --- libs do haxelib.json ---
           HAXELIB_JSON_LIBS=""
+          PROJECT_XML_LIBS=""
+
+          # Ler haxelib.json se existir
           if [ -f haxelib.json ]; then
             if jq -e '.dependencies' haxelib.json >/dev/null 2>&1; then
               HAXELIB_JSON_LIBS=$(jq -r '.dependencies | keys[]' haxelib.json)
@@ -93,20 +103,19 @@ jobs:
             echo "haxelib.json não encontrado, pulando"
           fi
 
-          # --- libs do project.xml ---
-          PROJECT_XML_LIBS=""
+          # Ler project.xml se existir
           if [ -f project.xml ]; then
-            PROJECT_XML_LIBS=$(xmllint --xpath '//haxelib/@name' project.xml | sed 's/name=//g' | tr -d '"')
+            PROJECT_XML_LIBS=$(xmllint --xpath '//haxelib/@name' project.xml 2>/dev/null | sed 's/name=//g' | tr -d '"')
             echo "Libs do project.xml: $PROJECT_XML_LIBS"
           else
             echo "project.xml não encontrado, pulando"
           fi
 
-          # --- Combinar e remover duplicatas ---
+          # Combinar todas as libs únicas
           ALL_LIBS=$(echo -e "$HAXELIB_JSON_LIBS\n$PROJECT_XML_LIBS" | sort -u | grep -v '^$')
           echo "Instalando e rebuildando as seguintes libs: $ALL_LIBS"
 
-          # --- Instalar e rebuildar libs (exceto lime/hxcpp já instalados) ---
+          # Instalar e rebuildar (exceto lime/hxcpp já instalados)
           for lib in $ALL_LIBS; do
             if [[ "$lib" != "lime" && "$lib" != "hxcpp" ]]; then
               echo "Instalando $lib..."
@@ -116,7 +125,7 @@ jobs:
             fi
           done
 
-          # linc_luajit
+          # linc_luajit (dev lib)
           git clone https://github.com/nebulazorua/linc_luajit.git ~/haxelib/linc_luajit/git
           haxelib dev linc_luajit ~/haxelib/linc_luajit/git
 
