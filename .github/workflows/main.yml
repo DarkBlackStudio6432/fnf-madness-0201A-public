@@ -13,7 +13,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-            - name: Setup Java 17
+      - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -36,7 +36,7 @@ jobs:
         with:
           haxe-version: 4.2.5
 
-            - name: Install Base Libs
+      - name: Install Base Libs
         run: |
           haxelib setup ~/haxelib
           haxelib install lime 8.1.2 --quiet
