@@ -9,7 +9,7 @@ import openfl.events.Event;
 import openfl.display.StageScaleMode;
 import lime.app.Application;
 import lime.system.System;
-import states.Init;
+import states.TitleState;
 
 #if CRASH_HANDLER
 import openfl.events.UncaughtErrorEvent;
@@ -24,7 +24,7 @@ class Main extends Sprite
 	var game = {
 		width: 1280,
 		height: 720,
-		initialState: Init,
+		initialState: TitleState,
 		zoom: -1.0,
 		framerate: 60,
 		skipSplash: true,
