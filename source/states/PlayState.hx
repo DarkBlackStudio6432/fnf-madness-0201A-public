@@ -2130,7 +2130,7 @@ class PlayState extends MusicBeatState
 				if (Math.isNaN(value)) value = 1.0;
 				if (Math.isNaN(time)) value = 1.0;
 
-				cameraZoomTween?.cancel();
+				if (cameraZoomTween != null) cameraZoomTween.cancel();
 				cameraZoomTween = FlxTween.num(FlxG.camera.zoom,value,time,{ease: LuaUtils.getTweenEaseByString(value2),onComplete: Void->camZooming = true},(v)->
 				{
 					camZooming = false;
