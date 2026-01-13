@@ -1,5 +1,6 @@
 package states;
 
+import openfl.ui.Keyboard;
 import backend.Highscore;
 import backend.StageData;
 import backend.WeekData;
@@ -665,7 +666,7 @@ class PlayState extends MusicBeatState
 FlxG.stage.addEventListener(KeyboardEvent.KEY_DOWN, onKeyPress);
 FlxG.stage.addEventListener(KeyboardEvent.KEY_UP, onKeyRelease);
 #end
-
+}
 		//PRECACHING THINGS THAT GET USED FREQUENTLY TO AVOID LAGSPIKES
 		if(ClientPrefs.data.hitsoundVolume > 0) Paths.sound('hitsound');
 		for (i in 1...4) Paths.sound('missnote$i');
@@ -1918,20 +1919,21 @@ FlxG.stage.addEventListener(KeyboardEvent.KEY_UP, onKeyRelease);
 		if (chartingMode #if debug || true #end)
 		{
 		#if !FLX_NO_KEYBOARD
-if (FlxG.keys.justPressed.TWO)
+private function onKeyPress(event:KeyboardEvent):Void
 {
-    // Go 10 seconds into the future :O
-    setSongTime(Conductor.songPosition + 10000);
-    clearNotesBefore(Conductor.songPosition);
-}
+	switch (event.keyCode)
+	{
+		case Keyboard.TWO:
+			// Go 10 seconds into the future :O
+			setSongTime(Conductor.songPosition + 10000);
+			clearNotesBefore(Conductor.songPosition);
 
-if (FlxG.keys.justPressed.SIX)
-{
-    cpuControlled = !cpuControlled;
-    botplayTxt.visible = cpuControlled;
+		case Keyboard.SIX:
+			cpuControlled = botplayTxt.visible = !botplayTxt.visible;
+	}
+	
 }
 #end
-
 		for (i in comboGroup)
 		{
 			if (i != null && i.visible && i.active)
@@ -3764,7 +3766,4 @@ FlxG.stage.removeEventListener(KeyboardEvent.KEY_UP, onKeyRelease);
     #end
 
     super.destroy();
-}
-	
-	#end
 }
