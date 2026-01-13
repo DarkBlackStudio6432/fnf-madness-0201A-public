@@ -65,28 +65,34 @@ jobs:
         with:
           haxe-version: 4.2.5
 
-      # 6️⃣ Instalar todas as bibliotecas Haxe automaticamente
-      - name: Install All Haxe Libraries
+      # 6️⃣ Instalar todas as libs automaticamente
+      - name: Install All Haxe Libraries Automatically
         run: |
           echo "y" | haxelib setup ~/haxelib
 
-          # Detecta libs no haxelib.json, project.xml ou adiciona libs manualmente
-          # (Você pode adicionar libs extras aqui)
-          LIBS=(lime openfl flixel flixel-addons flixel-ui tjson hxcpp extension-androidtools)
+          # Detecta todas as libs do haxelib.json
+          if [ -f haxelib.json ]; then
+            LIBS=$(jq -r '.dependencies | keys[]' haxelib.json)
+          else
+            echo "Arquivo haxelib.json não encontrado, usando lista manual mínima"
+            LIBS="lime openfl hxcpp"
+          fi
 
-          for lib in "${LIBS[@]}"; do
-            echo "Installing $lib..."
+          echo "Instalando as libs: $LIBS"
+
+          for lib in $LIBS; do
+            echo "Instalando $lib..."
             if [[ "$lib" == "hxcpp" ]]; then
               curl -L https://github.com/HaxeFoundation/hxcpp/releases/download/v4.3.45/hxcpp-4.3.45.zip -o hxcpp.zip
               haxelib install hxcpp.zip --quiet
             else
-              haxelib install $lib --quiet || echo "$lib já está instalado"
+              haxelib install $lib --quiet || echo "$lib já instalado"
             fi
           done
 
           # Rebuild de todas as libs para Android
-          for lib in "${LIBS[@]}"; do
-            echo "Rebuilding $lib..."
+          for lib in $LIBS; do
+            echo "Rebuild $lib..."
             haxelib run lime rebuild $lib || echo "Falha no rebuild de $lib, continuar"
           done
 
