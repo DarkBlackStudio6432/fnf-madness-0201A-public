@@ -9,12 +9,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-        defaults:
-      run:
-        shell: bash
-        working-directory: . # SE ESTIVER EM PASTA, MUDE PARA: ./NomeDaSuaPasta
-        
-
     defaults:
       run:
         shell: bash
@@ -36,17 +30,13 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y wget unzip jq libxml2-utils
-
           mkdir -p $HOME/android-sdk
           cd $HOME/android-sdk
-
-          wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
+          wget dl.google.com
           unzip commandlinetools-linux-9477386_latest.zip -d cmdline-tools-temp
-
           mkdir -p cmdline-tools/latest
           mv cmdline-tools-temp/cmdline-tools/* cmdline-tools/latest
           rm -rf cmdline-tools-temp
-
           echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
           echo "PATH=$HOME/android-sdk/cmdline-tools/latest/bin:$HOME/android-sdk/platform-tools:$PATH" >> $GITHUB_ENV
 
@@ -54,103 +44,66 @@ jobs:
         run: |
           export ANDROID_HOME=$HOME/android-sdk
           export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
-          export PATH=$ANDROID_HOME/platform-tools:$PATH
-
-          # ✅ Aceitar todas as licenças sem quebrar pipe
           yes | sdkmanager --licenses || true
-
           sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
           sdkmanager "ndk;21.4.7075529"
-
           echo "ANDROID_NDK_ROOT=$ANDROID_HOME/ndk/21.4.7075529" >> $GITHUB_ENV
 
-      # 4️⃣ Setup Java 8 para Haxe/Lime
-      - name: Setup Java 8 for Haxe
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "8"
-
-      # 5️⃣ Setup Haxe
+      # 4️⃣ Setup Haxe
       - name: Setup Haxe
         uses: krdlab/setup-haxe@v1
         with:
           haxe-version: 4.2.5
 
-      # 6️⃣ Instalar lime e hxcpp primeiro
+      # 5️⃣ Instalar lime e hxcpp
       - name: Install lime and hxcpp
         run: |
           echo "y" | haxelib setup ~/haxelib
-          curl -L https://github.com/HaxeFoundation/hxcpp/releases/download/v4.3.45/hxcpp-4.3.45.zip -o hxcpp.zip
-          haxelib install hxcpp.zip --quiet
           haxelib install lime --quiet
+          haxelib install hxcpp --quiet
           haxelib run lime rebuild hxcpp
           haxelib run lime rebuild lime
 
-      # 7️⃣ Instalar todas as libs do project.xml e haxelib.json de forma segura
+      # 6️⃣ Instalar libs (Corrigido para encontrar Project.xml ou project.xml)
       - name: Install All Haxe Libraries Automatically
         run: |
           echo "y" | haxelib setup ~/haxelib
-
-          HAXELIB_JSON_LIBS=""
-          PROJECT_XML_LIBS=""
-
-          # Ler haxelib.json se existir
-          if [ -f haxelib.json ]; then
-            if jq -e '.dependencies' haxelib.json >/dev/null 2>&1; then
-              HAXELIB_JSON_LIBS=$(jq -r '.dependencies | keys[]' haxelib.json)
-              echo "Libs do haxelib.json: $HAXELIB_JSON_LIBS"
-            else
-              echo "haxelib.json não tem 'dependencies', pulando"
-            fi
+          
+          # Procura o arquivo independente de maiúsculas/minúsculas
+          FILE=$(find . -maxdepth 2 -iname "project.xml" -print -quit)
+          
+          if [ -f "$FILE" ]; then
+            PROJECT_XML_LIBS=$(xmllint --xpath '//haxelib/@name' "$FILE" 2>/dev/null | sed 's/name=//g' | tr -d '"')
+            echo "Instalando: $PROJECT_XML_LIBS"
+            for lib in $PROJECT_XML_LIBS; do
+              if [[ "$lib" != "lime" && "$lib" != "hxcpp" ]]; then
+                haxelib install $lib --quiet || echo "$lib falhou"
+              fi
+            done
           else
-            echo "haxelib.json não encontrado, pulando"
+            echo "Project.xml não encontrado!"
+            exit 1
           fi
 
-          # Ler Project.xml se existir
-          if [ -f project.xml ]; then
-            PROJECT_XML_LIBS=$(xmllint --xpath '//haxelib/@name' project.xml 2>/dev/null | sed 's/name=//g' | tr -d '"')
-            echo "Libs do project.xml: $PROJECT_XML_LIBS"
-          else
-            echo "project.xml não encontrado, pulando"
-          fi
-
-          # Combinar todas as libs únicas
-          ALL_LIBS=$(echo -e "$HAXELIB_JSON_LIBS\n$PROJECT_XML_LIBS" | sort -u | grep -v '^$')
-          echo "Instalando e rebuildando as seguintes libs: $ALL_LIBS"
-
-          # Instalar e rebuildar (exceto lime/hxcpp já instalados)
-          for lib in $ALL_LIBS; do
-            if [[ "$lib" != "lime" && "$lib" != "hxcpp" ]]; then
-              echo "Instalando $lib..."
-              haxelib install $lib --quiet || echo "$lib já instalado"
-              echo "Rebuild $lib..."
-              haxelib run lime rebuild $lib || echo "Falha no rebuild de $lib, continuar"
-            fi
-          done
-
-          # linc_luajit (dev lib)
-          git clone https://github.com/nebulazorua/linc_luajit.git ~/haxelib/linc_luajit/git
+          # linc_luajit
+          git clone github.com ~/haxelib/linc_luajit/git
           haxelib dev linc_luajit ~/haxelib/linc_luajit/git
 
-      # 8️⃣ Configurar Lime para Android
+      # 7️⃣ Configurar Lime para Android
       - name: Configure Lime Android
         run: |
-          export ANDROID_HOME=$HOME/android-sdk
-          export ANDROID_NDK_ROOT=$ANDROID_HOME/ndk/21.4.7075529
-          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
-          export PATH=$ANDROID_HOME/platform-tools:$PATH
-
           haxelib run lime config ANDROID_SDK $ANDROID_HOME
           haxelib run lime config ANDROID_NDK_ROOT $ANDROID_NDK_ROOT
-          haxelib run lime config JAVA_HOME=$JAVA_HOME
+          haxelib run lime config JAVA_HOME $JAVA_HOME
           haxelib run lime setup android -y
 
-      # 9️⃣ Build APK
+      # 8️⃣ Build APK
       - name: Build APK
-        run: haxelib run lime build android -release
+        run: |
+          FILE=$(find . -maxdepth 2 -iname "project.xml" -print -quit)
+          haxelib run lime build android -release
 
-      # 🔟 Upload APK
+      # 9️⃣ Upload APK
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
