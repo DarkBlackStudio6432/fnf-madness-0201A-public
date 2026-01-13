@@ -59,9 +59,9 @@
 
 	<!-- ================= LIBS ================= -->
 
-	<haxelib name="flixel" version="4.11.0" />
-	<haxelib name="flixel-ui" version="2.5.0" />
-    <haxelib name="flixel-addons" version="2.9.0" />
+	<haxelib name="flixel" version="5.5.0" />
+    <haxelib name="flixel-ui" version="2.5.0" />
+    <haxelib name="flixel-addons" version="3.2.2" />
 	<haxelib name="tjson" />
 
 	<!-- ANDROID -->
