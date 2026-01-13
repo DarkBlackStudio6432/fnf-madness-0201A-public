@@ -19,6 +19,7 @@ jobs:
           distribution: temurin
           java-version: "11"
 
+            # 3️⃣ Instalar Android SDK (Correção Final Anti-Bloqueio)
       - name: Install Android SDK
         run: |
           sudo apt-get update
@@ -27,8 +28,14 @@ jobs:
           mkdir -p $HOME/android-sdk/cmdline-tools
           cd $HOME/android-sdk
           
-          # URL COMPLETA PARA 2026
-          curl -L "dl.google.com" -o sdk.zip
+          # Baixando com User-Agent de navegador para evitar o bloqueio do Google
+          curl -H "User-Agent: Mozilla/5.0" -L "dl.google.com" -o sdk.zip
+          
+          # Verifica se o arquivo é um ZIP real antes de tentar descompactar
+          if ! unzip -t sdk.zip > /dev/null; then
+            echo "ERRO: O download falhou ou o arquivo está corrompido."
+            exit 1
+          fi
           
           unzip sdk.zip
           mkdir -p cmdline-tools/latest
@@ -37,6 +44,7 @@ jobs:
 
           echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
           echo "PATH=$HOME/android-sdk/cmdline-tools/latest/bin:$HOME/android-sdk/platform-tools:$PATH" >> $GITHUB_ENV
+
 
       - name: Install Android Packages
         run: |
