@@ -9,103 +9,80 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    defaults:
-      run:
-        shell: bash
-
     steps:
-      # 1️⃣ Checkout do código
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 2️⃣ Setup Java 11 (para Android SDK)
       - name: Setup Java 11
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "11"
 
-      # 3️⃣ Instalar Android SDK
       - name: Install Android SDK
         run: |
           sudo apt-get update
           sudo apt-get install -y wget unzip jq libxml2-utils
-          mkdir -p $HOME/android-sdk
+          mkdir -p $HOME/android-sdk/cmdline-tools/latest
           cd $HOME/android-sdk
           wget dl.google.com
-          unzip commandlinetools-linux-9477386_latest.zip -d cmdline-tools-temp
-          mkdir -p cmdline-tools/latest
-          mv cmdline-tools-temp/cmdline-tools/* cmdline-tools/latest
-          rm -rf cmdline-tools-temp
+          unzip commandlinetools-linux-9477386_latest.zip
+          mv cmdline-tools/* cmdline-tools/latest/ || true
           echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
           echo "PATH=$HOME/android-sdk/cmdline-tools/latest/bin:$HOME/android-sdk/platform-tools:$PATH" >> $GITHUB_ENV
 
       - name: Install Android Packages
         run: |
-          export ANDROID_HOME=$HOME/android-sdk
-          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
           yes | sdkmanager --licenses || true
-          sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
-          sdkmanager "ndk;21.4.7075529"
+          sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2" "ndk;21.4.7075529"
           echo "ANDROID_NDK_ROOT=$ANDROID_HOME/ndk/21.4.7075529" >> $GITHUB_ENV
 
-      # 4️⃣ Setup Haxe
       - name: Setup Haxe
         uses: krdlab/setup-haxe@v1
         with:
           haxe-version: 4.2.5
 
-      # 5️⃣ Instalar lime e hxcpp
-      - name: Install lime and hxcpp
+      - name: Install Base Libs
         run: |
-          echo "y" | haxelib setup ~/haxelib
+          haxelib setup ~/haxelib
           haxelib install lime --quiet
           haxelib install hxcpp --quiet
           haxelib run lime rebuild hxcpp
-          haxelib run lime rebuild lime
 
-      # 6️⃣ Instalar libs (Corrigido para encontrar Project.xml ou project.xml)
-      - name: Install All Haxe Libraries Automatically
+      - name: Install Project Libs
         run: |
-          echo "y" | haxelib setup ~/haxelib
+          # Procura o arquivo Project.xml ignorando se é maiúsculo ou minúsculo
+          PROJECT_FILE=$(find . -maxdepth 2 -iname "project.xml" -print -quit)
           
-          # Procura o arquivo independente de maiúsculas/minúsculas
-          FILE=$(find . -maxdepth 2 -iname "project.xml" -print -quit)
-          
-          if [ -f "$FILE" ]; then
-            PROJECT_XML_LIBS=$(xmllint --xpath '//haxelib/@name' "$FILE" 2>/dev/null | sed 's/name=//g' | tr -d '"')
-            echo "Instalando: $PROJECT_XML_LIBS"
-            for lib in $PROJECT_XML_LIBS; do
-              if [[ "$lib" != "lime" && "$lib" != "hxcpp" ]]; then
-                haxelib install $lib --quiet || echo "$lib falhou"
-              fi
-            done
-          else
-            echo "Project.xml não encontrado!"
+          if [ -z "$PROJECT_FILE" ]; then
+            echo "ERRO: Arquivo Project.xml não encontrado na raiz!"
+            ls -R
             exit 1
           fi
 
-          # linc_luajit
-          git clone github.com ~/haxelib/linc_luajit/git
-          haxelib dev linc_luajit ~/haxelib/linc_luajit/git
+          # Extrai e instala as libs do XML
+          LIBS=$(xmllint --xpath '//haxelib/@name' "$PROJECT_FILE" | sed 's/name=//g' | tr -d '"')
+          for lib in $LIBS; do
+            if [[ "$lib" != "lime" && "$lib" != "hxcpp" ]]; then
+              haxelib install $lib --quiet || echo "Aviso: falha em $lib"
+            fi
+          done
+          haxelib git linc_luajit github.com
 
-      # 7️⃣ Configurar Lime para Android
-      - name: Configure Lime Android
+      - name: Configure and Build
         run: |
           haxelib run lime config ANDROID_SDK $ANDROID_HOME
           haxelib run lime config ANDROID_NDK_ROOT $ANDROID_NDK_ROOT
           haxelib run lime config JAVA_HOME $JAVA_HOME
           haxelib run lime setup android -y
-
-      # 8️⃣ Build APK
-      - name: Build APK
-        run: |
-          FILE=$(find . -maxdepth 2 -iname "project.xml" -print -quit)
+          
+          # Localiza a pasta do mod e compila
+          PROJECT_DIR=$(dirname $(find . -maxdepth 2 -iname "project.xml" -print -quit))
+          cd $PROJECT_DIR
           haxelib run lime build android -release
 
-      # 9️⃣ Upload APK
-      - name: Upload APK Artifact
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: MADNESS-Android
-          path: export/release/android/bin/app/build/outputs/apk/release/*.apk
+          name: Madness-Android-APK
+          path: ./**/export/release/android/bin/app/build/outputs/apk/release/*.apk
