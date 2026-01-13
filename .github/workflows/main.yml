@@ -50,7 +50,9 @@ jobs:
           export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
           export PATH=$ANDROID_HOME/platform-tools:$PATH
 
-          yes | sdkmanager --licenses
+          # ✅ Aceitar todas as licenças sem quebrar pipe
+          yes | sdkmanager --licenses || true
+
           sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
           sdkmanager "ndk;21.4.7075529"
 
