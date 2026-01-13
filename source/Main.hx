@@ -1,30 +1,19 @@
 package;
 
-#if android
-import android.content.Context;
-import android.os.Build;
-import android.Permissions;
-#end
-
 import debug.FPSCounter;
-import flixel.graphics.FlxGraphic;
 import flixel.FlxGame;
-import flixel.FlxState;
-import haxe.io.Path;
-import openfl.Assets;
+import flixel.FlxG;
 import openfl.Lib;
 import openfl.display.Sprite;
 import openfl.events.Event;
 import openfl.display.StageScaleMode;
 import lime.app.Application;
-import states.TitleState;
-import flixel.FlxG; // Importante adicionar
-import flixel.util.FlxTimer;
+import lime.system.System;
+import states.Init;
 
 #if CRASH_HANDLER
 import openfl.events.UncaughtErrorEvent;
 import haxe.CallStack;
-import sys.FileSystem;
 import sys.io.File;
 #end
 
@@ -35,11 +24,11 @@ class Main extends Sprite
 	var game = {
 		width: 1280,
 		height: 720,
-		initialState: states.Init, // Certifique-se que o caminho da Init state está correto
+		initialState: Init,
 		zoom: -1.0,
 		framerate: 60,
 		skipSplash: true,
-		startFullscreen: true // Mudei para true para mobile
+		startFullscreen: true
 	};
 
 	public static var fpsVar:FPSCounter;
@@ -53,111 +42,84 @@ class Main extends Sprite
 	{
 		super();
 
-		#if android
-		// Define o diretório de trabalho para a pasta de arquivos do app no Android
-		Sys.setCwd(Path.addTrailingSlash(Context.getExternalFilesDir()));
-		#elseif ios
-		Sys.setCwd(lime.system.System.applicationStorageDirectory);
-		#end
+		// Diretório seguro (Android / Desktop / CI)
+		Sys.setCwd(System.applicationStorageDirectory);
 
 		if (stage != null)
-		{
 			init();
-		}
 		else
-		{
 			addEventListener(Event.ADDED_TO_STAGE, init);
-		}
 	}
 
-	private function init(?E:Event):Void
+	private function init(?e:Event):Void
 	{
-		if (hasEventListener(Event.ADDED_TO_STAGE))
-		{
-			removeEventListener(Event.ADDED_TO_STAGE, init);
-		}
-
+		removeEventListener(Event.ADDED_TO_STAGE, init);
 		setupGame();
 	}
 
 	private function setupGame():Void
 	{
-		var stageWidth:Int = Lib.current.stage.stageWidth;
-		var stageHeight:Int = Lib.current.stage.stageHeight;
+		var stageWidth = Lib.current.stage.stageWidth;
+		var stageHeight = Lib.current.stage.stageHeight;
 
 		if (game.zoom == -1.0)
 		{
-			var ratioX:Float = stageWidth / game.width;
-			var ratioY:Float = stageHeight / game.height;
+			var ratioX = stageWidth / game.width;
+			var ratioY = stageHeight / game.height;
 			game.zoom = Math.min(ratioX, ratioY);
 			game.width = Math.ceil(stageWidth / game.zoom);
 			game.height = Math.ceil(stageHeight / game.zoom);
 		}
-	
-		addChild(new FlxGame(game.width, game.height, game.initialState, game.framerate, game.framerate, game.skipSplash, game.startFullscreen));
 
-		// FPS Counter visível no Mobile também
+		addChild(new FlxGame(
+			game.width,
+			game.height,
+			game.initialState,
+			game.framerate,
+			game.framerate,
+			game.skipSplash,
+			game.startFullscreen
+		));
+
 		fpsVar = new FPSCounter(10, 3, 0xFFFFFF);
 		addChild(fpsVar);
-		
+
 		#if mobile
-		// Ajuste de DPI para mobile não deixar o FPS minúsculo
-		fpsVar.scaleX = fpsVar.scaleY = 1.5; 
+		fpsVar.scaleX = fpsVar.scaleY = 1.5;
 		#end
 
 		Lib.current.stage.align = "tl";
 		Lib.current.stage.scaleMode = StageScaleMode.NO_SCALE;
 
 		#if CRASH_HANDLER
-		Lib.current.loaderInfo.uncaughtErrorEvents.addEventListener(UncaughtErrorEvent.UNCAUGHT_ERROR, onCrash);
+		Lib.current.loaderInfo.uncaughtErrorEvents.addEventListener(
+			UncaughtErrorEvent.UNCAUGHT_ERROR,
+			onCrash
+		);
 		#end
-
-		// Shader fix
-		FlxG.signals.gameResized.add(function (w, h) {
-		     if (FlxG.cameras != null) {
-			   for (cam in FlxG.cameras.list) {
-				if (cam != null && cam.filters != null)
-					resetSpriteCache(cam.flashSprite);
-			   }
-			}
-			if (FlxG.game != null) resetSpriteCache(FlxG.game);
-		});
-	}
-
-	static function resetSpriteCache(sprite:Sprite):Void {
-		@:privateAccess {
-		    sprite.__cacheBitmap = null;
-			sprite.__cacheBitmapData = null;
-		}
 	}
 
 	#if CRASH_HANDLER
 	function onCrash(e:UncaughtErrorEvent):Void
 	{
-		var errMsg:String = "";
-		var path:String;
-		var callStack:Array<StackItem> = CallStack.exceptionStack(true);
-		var dateNow:String = Date.now().toString().replace(" ", "_").replace(":", "'");
+		var errMsg = "";
+		var dateNow = Date.now().toString().replace(" ", "_").replace(":", "-");
+		var path = "crash_" + dateNow + ".txt";
 
-		// No Android, salva na pasta de dados do app
-		path = "crash_" + dateNow + ".txt";
-
-		for (stackItem in callStack)
+		for (item in CallStack.exceptionStack(true))
 		{
-			switch (stackItem)
+			switch (item)
 			{
-				case FilePos(s, file, line, column):
+				case FilePos(_, file, line, _):
 					errMsg += file + " (line " + line + ")\n";
 				default:
 			}
 		}
 
-		errMsg += "\nUncaught Error: " + e.error;
-		
+		errMsg += "\nUncaught Error:\n" + e.error;
 		File.saveContent(path, errMsg);
-		Sys.println(errMsg);
 
-		Application.current.window.alert(errMsg, "Error!");
+		Application.current.window.alert(errMsg, "Crash");
 		Sys.exit(1);
 	}
 	#end
