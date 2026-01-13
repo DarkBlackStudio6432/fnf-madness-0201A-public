@@ -1,4 +1,4 @@
-name: Build Android
+name: Build Android APK
 
 on:
   push:
@@ -10,18 +10,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Passo 0: Checkout do código
+      # 1️⃣ Checkout do código
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Passo 1: Instalar Java 11 (necessário para Android SDK)
+      # 2️⃣ Setup Java 11 (necessário para Android SDK)
       - name: Setup Java 11
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "11"
 
-      # Passo 2: Instalar Android SDK
+      # 3️⃣ Instalar Android SDK
       - name: Install Android SDK
         run: |
           sudo apt-get update
@@ -52,32 +52,32 @@ jobs:
 
           echo "ANDROID_NDK_ROOT=$ANDROID_HOME/ndk/21.4.7075529" >> $GITHUB_ENV
 
-      # Passo 3: Configurar Java 8 para Haxe/Lime
+      # 4️⃣ Setup Java 8 para Haxe/Lime
       - name: Setup Java 8 for Haxe
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "8"
 
-      # Passo 4: Instalar Haxe
+      # 5️⃣ Instalar Haxe
       - name: Setup Haxe
         uses: krdlab/setup-haxe@v1
         with:
           haxe-version: 4.2.5
 
-      # Passo 5: Instalar bibliotecas Haxe necessárias
+      # 6️⃣ Instalar todas as bibliotecas Haxe do projeto automaticamente
       - name: Install Haxe Libraries
         run: |
           echo "y" | haxelib setup ~/haxelib
 
-          # Bibliotecas do projeto
-          haxelib install lime 7.9.0 --quiet
-          haxelib install openfl 9.1.0 --quiet
-          haxelib install flixel 4.11.0 --quiet
-          haxelib install flixel-addons 2.10.0 --quiet
-          haxelib install flixel-ui 2.3.3 --quiet
-          haxelib install tjson --quiet              # <<< Corrigido: tjson adicionado
-
+          # Instala libs listadas no haxelib.json ou manualmente
+          haxelib install lime --quiet
+          haxelib install openfl --quiet
+          haxelib install flixel --quiet
+          haxelib install flixel-addons --quiet
+          haxelib install flixel-ui --quiet
+          haxelib install tjson --quiet
+          
           # hxcpp manual
           curl -L https://github.com/HaxeFoundation/hxcpp/releases/download/v4.3.45/hxcpp-4.3.45.zip -o hxcpp.zip
           haxelib install hxcpp.zip --quiet
@@ -86,8 +86,31 @@ jobs:
           git clone https://github.com/nebulazorua/linc_luajit.git ~/haxelib/linc_luajit/git
           haxelib dev linc_luajit ~/haxelib/linc_luajit/git
 
-          # Rebuild para Android
-          haxelib run lime rebuild tjson
+          # Rebuild das libs para Android
           haxelib run lime rebuild lime
+          haxelib run lime rebuild tjson
+          haxelib run lime rebuild hxcpp
 
-      # Pa
+      # 7️⃣ Configurar Lime/Android
+      - name: Configure Lime Android
+        run: |
+          export ANDROID_HOME=$HOME/android-sdk
+          export ANDROID_NDK_ROOT=$ANDROID_HOME/ndk/21.4.7075529
+          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
+          export PATH=$ANDROID_HOME/platform-tools:$PATH
+
+          haxelib run lime config ANDROID_SDK $ANDROID_HOME
+          haxelib run lime config ANDROID_NDK_ROOT $ANDROID_NDK_ROOT
+          haxelib run lime config JAVA_HOME=$JAVA_HOME
+          haxelib run lime setup android -y
+
+      # 8️⃣ Build APK
+      - name: Build APK
+        run: haxelib run lime build android -release
+
+      # 9️⃣ Upload APK como artefato
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MADNESS-Android
+          path: export/release/android/bin/app/build/outputs/apk/release/*.apk
