@@ -1,5 +1,17 @@
 package states.editors;
 
+#if android
+
+class CharacterEditorState extends MusicBeatState
+{
+	override function create()
+	{
+		super.create();
+		// Editor desativado no Android
+	}
+}
+
+#else
 import flixel.FlxObject;
 import flixel.graphics.FlxGraphic;
 
@@ -1311,6 +1323,8 @@ class CharacterEditorState extends MusicBeatState
 			_file.addEventListener(Event.CANCEL, onSaveCancel);
 			_file.addEventListener(IOErrorEvent.IO_ERROR, onSaveError);
 			_file.save(data, '$_char.json');
+			
 		}
 	}
 }
+#end
