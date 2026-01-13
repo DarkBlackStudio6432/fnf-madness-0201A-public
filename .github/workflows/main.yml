@@ -9,6 +9,12 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+        defaults:
+      run:
+        shell: bash
+        working-directory: . # SE ESTIVER EM PASTA, MUDE PARA: ./NomeDaSuaPasta
+        
+
     defaults:
       run:
         shell: bash
