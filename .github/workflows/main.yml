@@ -47,7 +47,6 @@ jobs:
           haxelib install flixel-addons 2.9.0 --quiet
           haxelib install hxcpp 4.3.2 --quiet
           haxelib install tjson --quiet
-          haxelib install flxanimate --quiet
           haxelib git hxvlc https://github.com/MAJigsaw77/hxvlc.git --quiet
           haxelib run lime rebuild hxcpp
 
