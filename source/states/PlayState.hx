@@ -1924,14 +1924,17 @@ private function onKeyPress(event:KeyboardEvent):Void
 	switch (event.keyCode)
 	{
 		case Keyboard.TWO:
-			// Go 10 seconds into the future :O
 			setSongTime(Conductor.songPosition + 10000);
 			clearNotesBefore(Conductor.songPosition);
 
 		case Keyboard.SIX:
 			cpuControlled = botplayTxt.visible = !botplayTxt.visible;
 	}
-	
+}
+
+private function onKeyRelease(event:KeyboardEvent):Void
+{
+	// pode ficar vazio
 }
 #end
 		for (i in comboGroup)
